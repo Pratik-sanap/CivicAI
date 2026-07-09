@@ -1,0 +1,26 @@
+# Root gitignore for CivicAI
+
+# Frontend dependency & build files
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+
+# Backend environment & dependencies
+backend/.venv/
+backend/venv/
+backend/env/
+backend/ENV/
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/.env
+
+# Local development files & OS caches
+.DS_Store
+Thumbs.db
+*.log
+.gemini/
+.agents/
+.idea/
+.vscode/
