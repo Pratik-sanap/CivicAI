@@ -8,6 +8,7 @@ import ComplaintTrackingPage from './pages/citizen/ComplaintTrackingPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import HeatmapPage from './pages/HeatmapPage';
 import { ToastProvider } from './components/common/Toast';
+import { useUserLocation } from './hooks/useUserLocation';
 import type { ImageAnalysisResponse } from './types/analysis';
 import type { LocationSnapshot } from './types/report';
 
@@ -26,6 +27,15 @@ type ViewState = 'landing' | 'dashboard' | 'report' | 'analysis' | 'tracking' | 
 function App() {
   const [view, setView] = useState<ViewState>('landing');
   const [analysisSession, setAnalysisSession] = useState<AnalysisSession | null>(null);
+
+  /**
+   * Request geolocation immediately when the app first mounts so the browser
+   * permission prompt appears right away — before the user navigates to any
+   * map page. The resolved coordinates are available in the hook's return value
+   * and are also consumed by ComplaintsMap / HeatmapPage via their own calls
+   * to the same hook (the OS caches the result so no duplicate prompt is shown).
+   */
+  useUserLocation();
 
   const handleNavigate = (targetView: ViewState) => {
     setAnalysisSession(null);

@@ -132,6 +132,8 @@ const resolutionPoints: AdminChartPoint[] = [
   { label: 'Fri', value: 27 },
 ];
 
+import { useUserLocation, FALLBACK_CENTER } from '../../hooks/useUserLocation';
+
 const mapSeeds: AdminMapComplaint[] = [
   {
     id: 'map-seed-1',
@@ -219,19 +221,23 @@ const mapSeeds: AdminMapComplaint[] = [
   },
 ];
 
-const buildMapComplaints = () =>
+const buildMapComplaints = (baseLat: number, baseLng: number) =>
   Array.from({ length: 180 }, (_, index) => {
     const seed = mapSeeds[index % mapSeeds.length];
     const ring = Math.floor(index / mapSeeds.length);
     const angle = (index * 137.508 * Math.PI) / 180;
     const spread = 0.0015 + ring * 0.0002;
 
+    // Delhi center is ~28.6139, 77.209. Offset from Delhi:
+    const latOffset = seed.latitude - 28.6139;
+    const lngOffset = seed.longitude - 77.209;
+
     return {
       ...seed,
       id: `${seed.id}-${index}`,
       reference: `CMP-${3001 + index}`,
-      latitude: seed.latitude + Math.cos(angle) * spread,
-      longitude: seed.longitude + Math.sin(angle) * spread,
+      latitude: baseLat + latOffset + Math.cos(angle) * spread,
+      longitude: baseLng + lngOffset + Math.sin(angle) * spread,
       updatedAt: `${(index % 12) + 1} min ago`,
       location: `${seed.location} Cluster ${ring + 1}`,
       summary: `${seed.summary} Report ${index + 1}.`,
@@ -241,7 +247,12 @@ const buildMapComplaints = () =>
 function AdminDashboardPage({ onQuickReport, onSwitchToCitizen }: AdminDashboardPageProps) {
   const [filters, setFilters] = useState<AdminFilterState>(initialFilters);
   const [activeTab, setActiveTab] = useState('overview');
-  const mapComplaints = useMemo(buildMapComplaints, []);
+
+  const { lat, lng } = useUserLocation();
+  const baseLat = lat !== null ? lat : FALLBACK_CENTER[0];
+  const baseLng = lng !== null ? lng : FALLBACK_CENTER[1];
+
+  const mapComplaints = useMemo(() => buildMapComplaints(baseLat, baseLng), [baseLat, baseLng]);
 
   const filteredComplaints = complaints.filter((complaint) => {
     const departmentMatch = filters.department === 'all' || complaint.department === filters.department;

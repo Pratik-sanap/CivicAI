@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Map, MapPin, Filter, X, BarChart3, AlertTriangle, ShieldCheck, CheckCircle2, ChevronRight, Activity, Calendar } from 'lucide-react';
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import AppHeader from '../components/layout/AppHeader';
+import MapRecenter from '../components/maps/MapRecenter';
+import { useUserLocation, FALLBACK_CENTER } from '../hooks/useUserLocation';
 
 interface HeatmapPageProps {
   onBack: () => void;
@@ -23,22 +26,36 @@ interface MapMarker {
   summary: string;
 }
 
-const initialMarkers: MapMarker[] = [
-  { id: 'cmp-1024', title: 'Water overflow near market', category: 'water_leakage', severity: 'high', status: 'in_review', department: 'water_supply', location: 'Ward 7, Market Road', lat: 18.5204, lng: 73.8567, date: '2026-07-06', summary: 'Overflow pooling across the curb and causing pedestrians to walk on the road shoulder.' },
-  { id: 'cmp-1021', title: 'Broken streetlight at junction', category: 'streetlight', severity: 'medium', status: 'assigned', department: 'electricity', location: 'School Junction', lat: 18.5309, lng: 73.8421, date: '2026-07-05', summary: 'Junction is poorly lit after sunset — residents have flagged visibility concerns.' },
-  { id: 'cmp-1016', title: 'Ring road potholes', category: 'pothole', severity: 'low', status: 'resolved', department: 'road_works', location: 'Ring Road Sector 4', lat: 18.5112, lng: 73.8690, date: '2026-07-03', summary: 'Temporary patching completed. Road team closed the complaint.' },
-  { id: 'cmp-1004', title: 'Drain blockage', category: 'water_leakage', severity: 'critical', status: 'submitted', department: 'water_supply', location: 'Ward 6, Main St', lat: 18.5255, lng: 73.8510, date: '2026-07-07', summary: 'Sewer backflow reporting inside lower residential quarters.' },
-  { id: 'cmp-1005', title: 'Illegal waste dumping', category: 'waste_dump', severity: 'high', status: 'in_review', department: 'sanitation', location: 'Ward 3, Garbage Bin Spot B', lat: 18.5180, lng: 73.8610, date: '2026-07-06', summary: 'Unmanaged garbage pile overflowing onto active pedestrian lanes.' }
-];
-
 function HeatmapPage({ onBack, onSwitchToAdmin, onQuickReport }: HeatmapPageProps) {
   const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [deptFilter, setDeptFilter] = useState('all');
-  const [viewMode, setViewMode] = useState<'both' | 'markers' | 'heatmap'>('both');
 
-  const filteredMarkers = initialMarkers.filter(m => {
+  // Request geolocation immediately on mount
+  const { lat, lng, status: geoStatus } = useUserLocation();
+  const userCenter: [number, number] =
+    lat !== null && lng !== null ? [lat, lng] : FALLBACK_CENTER;
+
+  // Offset sample markers relative to user's location so they always appear nearby
+  const offset = useMemo(
+    () => ({
+      baseLat: userCenter[0],
+      baseLng: userCenter[1],
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [geoStatus], // only recompute when location resolves
+  );
+
+  const markers: MapMarker[] = useMemo(() => [
+    { id: 'cmp-1024', title: 'Water overflow near market',    category: 'water_leakage',     severity: 'high',     status: 'in_review', department: 'water_supply', location: 'Ward 7, Market Road',      lat: offset.baseLat + 0.002,  lng: offset.baseLng + 0.003,  date: '2026-07-06', summary: 'Overflow pooling across the curb and causing pedestrians to walk on the road shoulder.' },
+    { id: 'cmp-1021', title: 'Broken streetlight at junction', category: 'streetlight',        severity: 'medium',   status: 'assigned',  department: 'electricity',   location: 'School Junction',         lat: offset.baseLat + 0.011,  lng: offset.baseLng - 0.015,  date: '2026-07-05', summary: 'Junction is poorly lit after sunset — residents have flagged visibility concerns.' },
+    { id: 'cmp-1016', title: 'Ring road potholes',             category: 'pothole',           severity: 'low',      status: 'resolved',  department: 'road_works',    location: 'Ring Road Sector 4',      lat: offset.baseLat - 0.009,  lng: offset.baseLng + 0.012,  date: '2026-07-03', summary: 'Temporary patching completed. Road team closed the complaint.' },
+    { id: 'cmp-1004', title: 'Drain blockage',                 category: 'water_leakage',     severity: 'critical', status: 'submitted', department: 'water_supply',  location: 'Ward 6, Main St',         lat: offset.baseLat + 0.005,  lng: offset.baseLng - 0.006,  date: '2026-07-07', summary: 'Sewer backflow reporting inside lower residential quarters.' },
+    { id: 'cmp-1005', title: 'Illegal waste dumping',          category: 'waste_dump',        severity: 'high',     status: 'in_review', department: 'sanitation',    location: 'Ward 3, Garbage Bin Spot B', lat: offset.baseLat - 0.003, lng: offset.baseLng + 0.009,  date: '2026-07-06', summary: 'Unmanaged garbage pile overflowing onto active pedestrian lanes.' },
+  ], [offset]);
+
+  const filteredMarkers = markers.filter(m => {
     if (categoryFilter !== 'all' && m.category !== categoryFilter) return false;
     if (severityFilter !== 'all' && m.severity !== severityFilter) return false;
     if (deptFilter !== 'all' && m.department !== deptFilter) return false;
@@ -48,17 +65,17 @@ function HeatmapPage({ onBack, onSwitchToAdmin, onQuickReport }: HeatmapPageProp
   // Calculate statistics based on filtered markers
   const totalCount = filteredMarkers.length;
   const criticalCount = filteredMarkers.filter(m => m.severity === 'critical').length;
-  const highCount = filteredMarkers.filter(m => m.severity === 'high').length;
-  const mediumCount = filteredMarkers.filter(m => m.severity === 'medium').length;
-  const lowCount = filteredMarkers.filter(m => m.severity === 'low').length;
+  const highCount    = filteredMarkers.filter(m => m.severity === 'high').length;
+  const mediumCount  = filteredMarkers.filter(m => m.severity === 'medium').length;
+  const lowCount     = filteredMarkers.filter(m => m.severity === 'low').length;
 
   const getSeverityColor = (sev: string) => {
     switch (sev) {
       case 'critical': return '#DC2626';
-      case 'high': return '#F59E0B';
-      case 'medium': return '#2563EB';
-      case 'low': return '#16A34A';
-      default: return '#64748B';
+      case 'high':     return '#F59E0B';
+      case 'medium':   return '#2563EB';
+      case 'low':      return '#16A34A';
+      default:         return '#64748B';
     }
   };
 
@@ -78,117 +95,88 @@ function HeatmapPage({ onBack, onSwitchToAdmin, onQuickReport }: HeatmapPageProp
       {/* Main Full-Screen Grid Layout: 80% Map, 20% Sidebar */}
       <div className="flex-grow flex flex-col md:flex-row relative overflow-hidden">
         
-        {/* LEFT Panel: Map Viewport (80%) */}
-        <div className="w-full md:w-[80%] h-full relative bg-slate-100 flex items-center justify-center overflow-hidden border-r border-slate-200">
-          
-          {/* Custom vector-based city map overlay */}
-          <div className="absolute inset-0 bg-slate-50 flex items-center justify-center">
-            <svg viewBox="0 0 800 600" className="w-full h-full text-slate-200 opacity-60" preserveAspectRatio="none">
-              <defs>
-                <pattern id="heatmapGrid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#E2E8F0" strokeWidth="1" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#heatmapGrid)" />
+        {/* LEFT Panel: Leaflet Map Viewport (80%) */}
+        <div className="w-full md:w-[80%] h-full relative overflow-hidden border-r border-slate-200">
 
-              {/* Waterway */}
-              <path d="M 0 120 Q 200 170 400 140 T 800 220 L 800 270 Q 600 200 400 200 T 0 170 Z" fill="#DBEAFE" />
+          {/* Real Leaflet + OpenStreetMap — no API key needed */}
+          <div style={{ height: '100%', width: '100%' }}>
+            <MapContainer
+              center={userCenter}
+              zoom={14}
+              style={{ height: '100%', width: '100%' }}
+              scrollWheelZoom={true}
+              zoomControl={true}
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                maxZoom={19}
+              />
 
-              {/* Main Roads grid */}
-              <line x1="120" y1="0" x2="120" y2="600" stroke="#E2E8F0" strokeWidth="12" />
-              <line x1="320" y1="0" x2="320" y2="600" stroke="#E2E8F0" strokeWidth="16" />
-              <line x1="640" y1="0" x2="640" y2="600" stroke="#E2E8F0" strokeWidth="12" />
-              <line x1="0" y1="220" x2="800" y2="220" stroke="#E2E8F0" strokeWidth="16" />
-              <line x1="0" y1="460" x2="800" y2="460" stroke="#E2E8F0" strokeWidth="12" />
+              {/* Fly to user position once geolocation resolves */}
+              <MapRecenter center={userCenter} zoom={14} />
 
-              {/* Parks */}
-              <rect x="380" y="260" width="220" height="160" rx="16" fill="#DCFCE7" opacity="0.8" />
-            </svg>
+              {/* Marker layer */}
+              {filteredMarkers.map(m => (
+                <CircleMarker
+                  key={m.id}
+                  center={[m.lat, m.lng]}
+                  radius={selectedMarker?.id === m.id ? 12 : 8}
+                  pathOptions={{
+                    color: selectedMarker?.id === m.id ? '#ffffff' : '#e2e8f0',
+                    weight: selectedMarker?.id === m.id ? 3 : 1.5,
+                    fillColor: getSeverityColor(m.severity),
+                    fillOpacity: 1,
+                  }}
+                  eventHandlers={{ click: () => setSelectedMarker(m) }}
+                >
+                  <Popup>
+                    <div className="min-w-[200px] text-xs">
+                      <p className="font-bold text-slate-900">{m.title}</p>
+                      <p className="text-slate-500 mt-0.5">{m.location}</p>
+                      <div className="mt-2 flex gap-1 flex-wrap">
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{formatLabel(m.status)}</span>
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white" style={{ backgroundColor: getSeverityColor(m.severity) }}>{formatLabel(m.severity)}</span>
+                      </div>
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              ))}
+            </MapContainer>
           </div>
 
-          {/* Heatmap overlay dots */}
-          {viewMode !== 'markers' && (
-            <div className="absolute inset-0 pointer-events-none">
-              {filteredMarkers.map((m) => (
-                <div
-                  key={`heat-${m.id}`}
-                  className="absolute rounded-full opacity-30 blur-2xl transition-all duration-300"
-                  style={{
-                    left: `${((m.lng - 73.84) * 8000) % 75 + 10}%`,
-                    top: `${((m.lat - 18.5) * 8000) % 75 + 10}%`,
-                    width: m.severity === 'critical' ? '140px' : m.severity === 'high' ? '110px' : '80px',
-                    height: m.severity === 'critical' ? '140px' : m.severity === 'high' ? '110px' : '80px',
-                    backgroundColor: getSeverityColor(m.severity)
-                  }}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Interactive Map Pins */}
-          {viewMode !== 'heatmap' && (
-            <div className="absolute inset-0">
-              {filteredMarkers.map((m) => {
-                const x = ((m.lng - 73.84) * 8000) % 75 + 10;
-                const y = ((m.lat - 18.5) * 8000) % 75 + 10;
-                const isSelected = selectedMarker?.id === m.id;
-
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => setSelectedMarker(m)}
-                    className="absolute group flex flex-col items-center transform -translate-x-1/2 -translate-y-1/2 transition hover:scale-110 z-10"
-                    style={{ left: `${x}%`, top: `${y}%` }}
-                  >
-                    <div
-                      className={`h-9 w-9 rounded-full flex items-center justify-center shadow-md transition ${
-                        isSelected ? 'bg-slate-900 ring-4 ring-blue-100 text-white' : 'bg-white border-2'
-                      }`}
-                      style={{ borderColor: getSeverityColor(m.severity) }}
-                    >
-                      <MapPin className="h-4.5 w-4.5" style={{ color: isSelected ? '#FFF' : getSeverityColor(m.severity) }} />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Map Layer Mode Controller */}
-          <div className="absolute top-6 left-6 bg-white border border-slate-200 shadow-sm rounded-xl p-1 flex gap-1 z-10">
-            {['both', 'markers', 'heatmap'].map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode as any)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition capitalize ${
-                  viewMode === mode ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
+          {/* Geolocation status badge */}
+          <div className="pointer-events-none absolute top-4 left-1/2 -translate-x-1/2 z-[1000]">
+            {geoStatus === 'loading' && (
+              <span className="flex items-center gap-2 rounded-xl bg-white/95 border border-amber-200 px-4 py-2 text-xs font-semibold text-amber-700 shadow-md">
+                <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                Locating you…
+              </span>
+            )}
+            {geoStatus === 'success' && (
+              <span className="flex items-center gap-2 rounded-xl bg-white/95 border border-green-200 px-4 py-2 text-xs font-semibold text-green-700 shadow-md">
+                <span className="h-2 w-2 rounded-full bg-green-500" />
+                Centred on your location
+              </span>
+            )}
+            {(geoStatus === 'denied' || geoStatus === 'unavailable') && (
+              <span className="flex items-center gap-2 rounded-xl bg-white/95 border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 shadow-md">
+                <span className="h-2 w-2 rounded-full bg-slate-400" />
+                Location access denied — showing default area
+              </span>
+            )}
           </div>
 
           {/* Severity Legend Card */}
-          <div className="absolute bottom-6 left-6 bg-white border border-slate-200 shadow-sm rounded-2xl p-4 space-y-2.5 z-10">
+          <div className="absolute bottom-6 left-4 bg-white border border-slate-200 shadow-sm rounded-2xl p-4 space-y-2.5 z-[1000]">
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Map Legend</p>
             <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-red-600" />
-                <span className="text-xs font-bold text-slate-700">Critical</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                <span className="text-xs font-bold text-slate-700">High Severity</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
-                <span className="text-xs font-bold text-slate-700">Medium</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-green-600" />
-                <span className="text-xs font-bold text-slate-700">Low Severity</span>
-              </div>
+              {[['#DC2626','Critical'],['#F59E0B','High'],['#2563EB','Medium'],['#16A34A','Low']].map(([color, label]) => (
+                <div key={label} className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+                  <span className="text-xs font-bold text-slate-700">{label}</span>
+                </div>
+              ))}
             </div>
           </div>
 

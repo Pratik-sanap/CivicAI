@@ -1,19 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { MapContainer, TileLayer } from 'react-leaflet';
 
-import MapHeatmapLayer from '../maps/MapHeatmapLayer';
-import MapLayerToggle, { type LayerMode } from '../maps/MapLayerToggle';
 import MapMarkerLayer from '../maps/MapMarkerLayer';
+import MapRecenter from '../maps/MapRecenter';
 
 import {
   formatLabel,
-  MAP_CENTER,
   MAP_ZOOM,
   SEVERITY_COLORS,
   SEVERITY_PILL,
-  SEVERITY_WEIGHTS,
   STATUS_PILL,
 } from '../../services/googleMaps/mapConfig';
+import { useUserLocation, FALLBACK_CENTER } from '../../hooks/useUserLocation';
 import type { AdminMapComplaint } from '../../types/adminDashboard';
 
 interface ComplaintsMapProps {
@@ -30,22 +28,12 @@ interface ComplaintsMapProps {
  *  - Heatmap point computation (via useMemo)
  */
 function ComplaintsMap({ complaints }: ComplaintsMapProps) {
-  const [layerMode, setLayerMode] = useState<LayerMode>('both');
   const [selectedComplaint, setSelectedComplaint] = useState<AdminMapComplaint | null>(null);
 
-  /** Convert complaints to leaflet.heat point format: [lat, lng, intensity] */
-  const heatmapPoints = useMemo<[number, number, number][]>(
-    () =>
-      complaints.map((c) => [
-        c.latitude,
-        c.longitude,
-        Math.min(SEVERITY_WEIGHTS[c.severity] / 5, 1), // normalize 0–1
-      ]),
-    [complaints],
-  );
-
-  const showMarkers = layerMode === 'markers' || layerMode === 'both';
-  const showHeatmap = layerMode === 'heatmap' || layerMode === 'both';
+  // Request geolocation on mount — browser prompt appears immediately
+  const { lat, lng, status: geoStatus } = useUserLocation();
+  const userCenter: [number, number] =
+    lat !== null && lng !== null ? [lat, lng] : FALLBACK_CENTER;
 
   const handleSelect = (complaint: AdminMapComplaint) => {
     setSelectedComplaint((prev) => (prev?.id === complaint.id ? null : complaint));
@@ -61,14 +49,12 @@ function ComplaintsMap({ complaints }: ComplaintsMapProps) {
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-[#2563EB]">Map</p>
           <h2 className="mt-2 text-lg font-bold text-[#0F172A]">
-            Hotspots across the municipality
+            Active Issues Map
           </h2>
           <p className="mt-1 text-xs text-[#64748B] font-semibold">
             {complaints.length} complaints · click any marker for details
           </p>
         </div>
-
-        <MapLayerToggle value={layerMode} onChange={setLayerMode} />
       </div>
 
       {/* ── Map container ───────────────────────────────────────────────── */}
@@ -76,7 +62,7 @@ function ComplaintsMap({ complaints }: ComplaintsMapProps) {
         {/* Leaflet needs an explicit height on its container */}
         <div style={{ height: '32rem', width: '100%' }}>
           <MapContainer
-            center={MAP_CENTER}
+            center={userCenter}
             zoom={MAP_ZOOM}
             style={{ height: '100%', width: '100%' }}
             scrollWheelZoom={true}
@@ -89,18 +75,37 @@ function ComplaintsMap({ complaints }: ComplaintsMapProps) {
               maxZoom={19}
             />
 
-            {showHeatmap && heatmapPoints.length > 0 && (
-              <MapHeatmapLayer points={heatmapPoints} />
-            )}
+            {/* Fly to user's location once geolocation resolves */}
+            <MapRecenter center={userCenter} zoom={MAP_ZOOM} />
 
-            {showMarkers && (
-              <MapMarkerLayer
-                complaints={complaints}
-                selectedId={selectedComplaint?.id ?? null}
-                onSelect={handleSelect}
-              />
-            )}
+            <MapMarkerLayer
+              complaints={complaints}
+              selectedId={selectedComplaint?.id ?? null}
+              onSelect={handleSelect}
+            />
           </MapContainer>
+        </div>
+
+        {/* Geolocation status badge */}
+        <div className="pointer-events-none absolute top-3 left-3 z-[1000]">
+          {geoStatus === 'loading' && (
+            <span className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-3 py-1.5 text-[11px] font-semibold text-slate-500 shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+              Locating you…
+            </span>
+          )}
+          {geoStatus === 'success' && (
+            <span className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-green-200 px-3 py-1.5 text-[11px] font-semibold text-green-700 shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+              Using your location
+            </span>
+          )}
+          {(geoStatus === 'denied' || geoStatus === 'unavailable') && (
+            <span className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-3 py-1.5 text-[11px] font-semibold text-slate-500 shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-slate-400" />
+              Default location
+            </span>
+          )}
         </div>
 
         {/* Legend pill — absolute-positioned on top of the map */}

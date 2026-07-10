@@ -74,6 +74,12 @@ function ReportIssuePage({ onOpenAnalysis, onBackToDashboard, onSwitchToAdmin }:
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  // Automatically request/detect location immediately when the user enters the page
+  useEffect(() => {
+    detectLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleFileSelected = (f: File) => {
     if (!f.type.startsWith('image/')) {
       toastError('Invalid file type', 'Please upload a JPEG, PNG, HEIC, or WebP image.');
