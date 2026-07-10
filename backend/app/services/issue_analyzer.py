@@ -1,3 +1,16 @@
+"""
+Legacy image analysis service used by the /complaints and /reports pipelines.
+
+IssueAnalyzer operates in two modes:
+  1. Gemini REST mode  — sends a base64 image directly to the Gemini REST API
+                         via httpx. Falls back to keyword mode on any error.
+  2. Keyword fallback  — matches plain-text notes/location against KEYWORD_RULES
+                         to produce a best-guess category/department assignment.
+
+The primary pipeline (POST /analyze) uses GeminiService + google-genai SDK
+instead, which provides richer output (priority, reasoning, estimated_impact,
+estimated_resolution_time) and uploads the image to Supabase Storage.
+"""
 from __future__ import annotations
 
 import json

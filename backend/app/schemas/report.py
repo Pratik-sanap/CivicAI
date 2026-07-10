@@ -1,3 +1,19 @@
+"""
+Pydantic schemas and enums shared across the complaints / reports API.
+
+Enums
+-----
+IssueCategory     — 10 recognised civic issue types + unknown fallback
+SeverityLevel     — low | medium | high | critical
+ReportStatus      — submitted → in_review → assigned → resolved pipeline
+MunicipalDepartment — 9 municipal departments for complaint routing
+
+Key models
+----------
+ReportCreate  — inbound payload for POST /complaints (base64 image + metadata)
+ReportRecord  — persisted record returned by all read/write endpoints
+IssueAnalysis — embedded AI analysis result inside ReportRecord
+"""
 from __future__ import annotations
 
 from datetime import datetime

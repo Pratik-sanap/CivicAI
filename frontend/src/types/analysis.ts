@@ -29,7 +29,10 @@ export interface ImageAnalysisResponse {
   severity: SeverityLevel;
   confidence: number;
   department: MunicipalDepartment;
-  impact: string;
   priority: string;
-  complaint: string;
+  reasoning: string[];
+  estimated_impact: string;
+  estimated_resolution_time: string;
+  professional_complaint: string;
+  image_url: string;
 }

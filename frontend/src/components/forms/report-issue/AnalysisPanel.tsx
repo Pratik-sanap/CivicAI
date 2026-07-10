@@ -128,7 +128,7 @@ function AnalysisPanel({ analysis, isLoading, error }: AnalysisPanelProps) {
               <Sparkles className="h-3.5 w-3.5 text-blue-600 animate-pulse" />
               Generated Complaint Preview
             </div>
-            <p className="mt-3 text-xs leading-relaxed font-semibold text-slate-600">{analysis.complaint}</p>
+            <p className="mt-3 text-xs leading-relaxed font-semibold text-slate-600">{analysis.professional_complaint}</p>
           </div>
 
           {/* Impact */}
@@ -136,7 +136,7 @@ function AnalysisPanel({ analysis, isLoading, error }: AnalysisPanelProps) {
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
               Estimated Public Impact
             </p>
-            <p className="mt-2 text-xs leading-relaxed text-slate-600 font-semibold">{analysis.impact}</p>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600 font-semibold">{analysis.estimated_impact}</p>
           </div>
         </div>
       ) : !isLoading && !error ? (

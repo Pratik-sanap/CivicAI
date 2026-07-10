@@ -4,6 +4,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Leaflet + Tailwind compatibility fixes ─────────────────────────────────
+   Tailwind's preflight resets break Leaflet in several ways:
+   1. `img { max-width: 100% }` squishes tile images → override inside .leaflet-container
+   2. Leaflet controls and popups rely on specific display/position values
+   ─────────────────────────────────────────────────────────────────────────── */
+.leaflet-container {
+  font-family: inherit;
+  background: #e5e7eb; /* visible fallback while tiles load */
+}
+
+.leaflet-container img {
+  max-width: none !important; /* undo Tailwind preflight */
+  max-height: none !important;
+  box-shadow: none !important;
+}
+
+.leaflet-tile-pane img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* Ensure Leaflet popup arrow and close button render correctly */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12) !important;
+}
+
+.leaflet-popup-content {
+  margin: 14px 16px !important;
+}
+
+/* Ensure zoom controls sit above the tile layer */
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+}
+
+.leaflet-control-zoom a {
+  border-radius: 6px !important;
+  color: #1e293b !important;
+  font-weight: 700 !important;
+}
+
+
+
 /* ── Base ──────────────────────────────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;

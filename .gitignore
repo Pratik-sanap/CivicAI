@@ -16,6 +16,9 @@ backend/*.py[cod]
 backend/*$py.class
 backend/.env
 
+# Root environment file (contains VITE_GOOGLE_MAPS_API_KEY for docker-compose)
+.env
+
 # Local development files & OS caches
 .DS_Store
 Thumbs.db

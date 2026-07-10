@@ -1,32 +1,17 @@
+/**
+ * Leaflet / OpenStreetMap map configuration.
+ *
+ * Shared constants for the civic-issue heatmap and marker layers:
+ * default centre coordinates, severity → weight/colour mappings, and
+ * Tailwind pill classes for severity/status badges.
+ *
+ * No Google Maps API key is required — tiles are served by OpenStreetMap.
+ */
 import type { SeverityLevel } from '../../types/report';
 
-// ─── Map centre (Delhi) ────────────────────────────────────────────────────────
-export const MAP_CENTER: google.maps.LatLngLiteral = { lat: 28.6139, lng: 77.209 };
-
-// ─── Dark map style ────────────────────────────────────────────────────────────
-export const DARK_MAP_STYLES: google.maps.MapTypeStyle[] = [
-  { elementType: 'geometry', stylers: [{ color: '#0f172a' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0f172a' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#94a3b8' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#cbd5e1' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0ea5e9' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-];
-
-// ─── Default map options ───────────────────────────────────────────────────────
-export const DEFAULT_MAP_OPTIONS: google.maps.MapOptions = {
-  disableDefaultUI: true,
-  clickableIcons: false,
-  gestureHandling: 'greedy',
-  zoomControl: true,
-  mapTypeControl: false,
-  streetViewControl: false,
-  fullscreenControl: false,
-  backgroundColor: '#020617',
-  styles: DARK_MAP_STYLES,
-};
+// ─── Map centre (Pune, India — adjust to your city) ───────────────────────────
+export const MAP_CENTER: [number, number] = [28.6139, 77.209];
+export const MAP_ZOOM = 12;
 
 // ─── Severity → heatmap weight ─────────────────────────────────────────────────
 export const SEVERITY_WEIGHTS: Record<SeverityLevel, number> = {
@@ -59,11 +44,6 @@ export const STATUS_PILL: Record<string, string> = {
   assigned: 'bg-sky-400/10 text-sky-100 border-sky-300/20',
   resolved: 'bg-emerald-400/10 text-emerald-100 border-emerald-300/20',
 };
-
-// ─── Libraries array (stable reference — must not be inlined in component) ────
-export const GOOGLE_LIBRARIES: ('visualization' | 'places' | 'geometry')[] = [
-  'visualization',
-];
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
 export const formatLabel = (value: string): string =>

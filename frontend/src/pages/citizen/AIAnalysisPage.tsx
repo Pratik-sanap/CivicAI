@@ -6,7 +6,6 @@ import {
   CheckCircle2, 
   Send, 
   Sparkles, 
-  Tag, 
   XCircle,
   FileText,
   AlertTriangle,
@@ -121,8 +120,16 @@ function AIAnalysisPage({ session, onSubmitComplaint, onAnalyzeAgain, onBack, on
   // Control sequential typing states
   const [isReasoningComplete, setIsReasoningComplete] = useState(false);
 
-  const { imagePreviewUrl, imageName, analysis } = session;
+  const { imageName, analysis } = session;
   const confidence = Math.round(analysis.confidence * 100);
+
+  // Use the Supabase public URL if available, otherwise fall back to the local preview
+  const displayImageUrl = analysis.image_url || session.imagePreviewUrl;
+
+  // Build reasoning text from the real Gemini reasoning array
+  const reasoningText = Array.isArray(analysis.reasoning) && analysis.reasoning.length > 0
+    ? analysis.reasoning.join(' ')
+    : `Detected a ${prettyLabel(analysis.category).toLowerCase()} with ${analysis.severity} severity.`;
 
   const handleSubmitComplaint = async () => {
     try {
@@ -196,7 +203,9 @@ function AIAnalysisPage({ session, onSubmitComplaint, onAnalyzeAgain, onBack, on
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">SLA Response Limit</p>
-                  <p className="text-amber-700 font-bold mt-0.5">24 Hours (High Priority)</p>
+                  <p className="text-amber-700 font-bold mt-0.5">
+                    {analysis.estimated_resolution_time} ({analysis.priority} Priority)
+                  </p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Intake Date</p>
@@ -234,9 +243,6 @@ function AIAnalysisPage({ session, onSubmitComplaint, onAnalyzeAgain, onBack, on
     );
   }
 
-  // Mocked reasoning if missing from analysis API payload
-  const reasoningText = (analysis as any).reasoning || `Detected a ${prettyLabel(analysis.category).toLowerCase()} with ${analysis.severity} severity rating. The damage is located within public limits and presents immediate risks to road/pedestrian safety. Automated routing dispatch is recommended for the ${prettyLabel(analysis.department)}.`;
-
   return (
     <div className="relative min-h-screen bg-slate-50 text-slate-900 font-sans">
       <AppHeader
@@ -264,12 +270,14 @@ function AIAnalysisPage({ session, onSubmitComplaint, onAnalyzeAgain, onBack, on
               
               <h2 className="text-base font-bold text-slate-900 truncate">{imageName}</h2>
               <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                Location: {session.location?.address ?? `${session.location?.latitude.toFixed(5)}, ${session.location?.longitude.toFixed(5)}`}
+                {session.location
+                  ? `Location: ${session.location.address ?? `${session.location.latitude.toFixed(5)}, ${session.location.longitude.toFixed(5)}`}`
+                  : 'Location: Not provided'}
               </p>
 
               <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 shadow-sm relative">
                 <img
-                  src={imagePreviewUrl}
+                  src={displayImageUrl}
                   alt={imageName}
                   className="h-80 w-full object-cover"
                 />
@@ -322,7 +330,9 @@ function AIAnalysisPage({ session, onSubmitComplaint, onAnalyzeAgain, onBack, on
                       <ConfidenceRing confidence={confidence} />
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">AI Confidence</p>
-                        <p className="text-xs font-bold text-slate-900 mt-0.5">High Certainty</p>
+                        <p className="text-xs font-bold text-slate-900 mt-0.5">
+                          {confidence >= 85 ? 'High Certainty' : confidence >= 60 ? 'Moderate Certainty' : 'Low Certainty'}
+                        </p>
                       </div>
                     </div>
 
@@ -343,7 +353,7 @@ function AIAnalysisPage({ session, onSubmitComplaint, onAnalyzeAgain, onBack, on
                       </div>
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Priority / SLA</p>
-                        <p className="text-xs font-bold text-slate-900 mt-0.5">SLA: {analysis.priority === 'high' || analysis.priority === 'critical' ? '24 Hours' : '72 Hours'}</p>
+                        <p className="text-xs font-bold text-slate-900 mt-0.5">{analysis.priority}</p>
                       </div>
                     </div>
 
@@ -353,13 +363,12 @@ function AIAnalysisPage({ session, onSubmitComplaint, onAnalyzeAgain, onBack, on
                       </div>
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Est. Resolution</p>
-                        <p className="text-xs font-bold text-slate-900 mt-0.5">2-3 Business Days</p>
-                        <p className="text-[9px] text-green-600 font-semibold mt-0.5">High Performance SLA</p>
+                        <p className="text-xs font-bold text-slate-900 mt-0.5">{analysis.estimated_resolution_time}</p>
                       </div>
                     </div>
                   </div>
 
-                  {/* AI Reasoning (Typed progressive text) */}
+                  {/* AI Reasoning (Typed progressive text from REAL Gemini data) */}
                   <div className="space-y-1">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">AI Reasoning</p>
                     <div className="text-xs leading-relaxed text-slate-600 font-semibold bg-slate-50 border border-slate-200 p-4 rounded-xl">
@@ -371,7 +380,7 @@ function AIAnalysisPage({ session, onSubmitComplaint, onAnalyzeAgain, onBack, on
                     </div>
                   </div>
 
-                  {/* Generated Complaint (Typed after reasoning completes) */}
+                  {/* Generated Professional Complaint (REAL Gemini data) */}
                   {isReasoningComplete && (
                     <motion.div 
                       initial={{ opacity: 0, y: 5 }}
@@ -383,12 +392,12 @@ function AIAnalysisPage({ session, onSubmitComplaint, onAnalyzeAgain, onBack, on
                         Generated Complaint Letter
                       </p>
                       <div className="text-xs leading-relaxed text-slate-600 font-semibold bg-blue-50/40 border border-blue-100 p-4 rounded-xl">
-                        <TypedText text={analysis.complaint} speed={6} />
+                        <TypedText text={analysis.professional_complaint} speed={6} />
                       </div>
                     </motion.div>
                   )}
 
-                  {/* Estimated Impact */}
+                  {/* Estimated Impact (REAL Gemini data) */}
                   {isReasoningComplete && (
                     <motion.div 
                       initial={{ opacity: 0 }}
@@ -396,7 +405,7 @@ function AIAnalysisPage({ session, onSubmitComplaint, onAnalyzeAgain, onBack, on
                       className="space-y-1"
                     >
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estimated Impact</p>
-                      <p className="text-xs text-slate-500 leading-relaxed font-semibold">{analysis.impact}</p>
+                      <p className="text-xs text-slate-500 leading-relaxed font-semibold">{analysis.estimated_impact}</p>
                     </motion.div>
                   )}
 

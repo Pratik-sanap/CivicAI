@@ -1,0 +1,48 @@
+services:
+
+  # ── FastAPI Backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: civicai-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env          # contains GEMINI_API_KEY, SUPABASE_URL, etc.
+    environment:
+      # Allow the Nginx frontend container to call the API
+      FRONTEND_ORIGINS: "http://localhost,http://frontend"
+      PORT: "8000"
+    ports:
+      - "8000:8000"             # Optional: expose for direct Swagger UI access
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - civicai-net
+
+  # ── React / Nginx Frontend ──────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Keep /api/v1 so Nginx proxies to the backend container
+        VITE_API_BASE_URL: "/api/v1"
+        # Maps are powered by Leaflet + OpenStreetMap — no API key needed
+    container_name: civicai-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"                 # App is accessible at http://localhost
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - civicai-net
+
+networks:
+  civicai-net:
+    driver: bridge

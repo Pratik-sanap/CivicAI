@@ -1,0 +1,21 @@
+# Node dependencies (rebuilt inside Docker)
+node_modules/
+
+# Previous builds
+dist/
+dist-ssr/
+
+# Environment files (secrets — baked via build-args only)
+.env
+.env.*
+!.env.example
+
+# Git & IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

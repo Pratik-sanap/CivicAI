@@ -1,0 +1,36 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment files (secrets — never bake into image)
+.env
+.env.*
+!.env.example
+
+# Test & tooling artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Git & IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Docs
+README.md
+docs/

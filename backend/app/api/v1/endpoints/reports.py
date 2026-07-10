@@ -1,9 +1,17 @@
+"""
+Legacy /reports router — kept for backward compatibility.
+
+All new code should use /complaints instead. This router mirrors the
+/complaints CRUD but with a simplified API and slightly different path
+conventions (e.g. PATCH /reports/{id}/status instead of PATCH /complaints/{id}).
+"""
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.v1.dependencies import get_report_service
 from app.schemas.report import ReportCreate, ReportRecord, ReportStatusUpdate
 from app.services.report_service import ReportService
 
+# Prefer /complaints for all new integrations
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
 

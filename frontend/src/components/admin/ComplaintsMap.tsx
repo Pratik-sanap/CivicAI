@@ -1,16 +1,14 @@
 import { useMemo, useState } from 'react';
-import { GoogleMap } from '@react-google-maps/api';
+import { MapContainer, TileLayer } from 'react-leaflet';
 
 import MapHeatmapLayer from '../maps/MapHeatmapLayer';
-import MapInfoWindow from '../maps/MapInfoWindow';
 import MapLayerToggle, { type LayerMode } from '../maps/MapLayerToggle';
-import MapLoader from '../maps/MapLoader';
 import MapMarkerLayer from '../maps/MapMarkerLayer';
 
 import {
-  DEFAULT_MAP_OPTIONS,
   formatLabel,
   MAP_CENTER,
+  MAP_ZOOM,
   SEVERITY_COLORS,
   SEVERITY_PILL,
   SEVERITY_WEIGHTS,
@@ -23,27 +21,28 @@ interface ComplaintsMapProps {
 }
 
 /**
- * ComplaintsMap — orchestrator component for the admin dashboard map panel.
+ * ComplaintsMap — orchestrator for the admin dashboard map panel.
+ * Now powered by Leaflet + OpenStreetMap — no API key required.
  *
  * Manages:
  *  - Layer mode (markers / heatmap / both)
- *  - Selected complaint (drives InfoWindow + detail panel)
+ *  - Selected complaint (drives detail panel below the map)
  *  - Heatmap point computation (via useMemo)
- *
- * Delegates rendering to focused reusable sub-components in `components/maps/`.
  */
 function ComplaintsMap({ complaints }: ComplaintsMapProps) {
-  const apiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) ?? '';
   const [layerMode, setLayerMode] = useState<LayerMode>('both');
   const [selectedComplaint, setSelectedComplaint] = useState<AdminMapComplaint | null>(null);
 
-  const heatmapPoints = useMemo(() => {
-    if (typeof google === 'undefined') return [];
-    return complaints.map((c) => ({
-      location: new google.maps.LatLng(c.latitude, c.longitude),
-      weight: SEVERITY_WEIGHTS[c.severity],
-    }));
-  }, [complaints]);
+  /** Convert complaints to leaflet.heat point format: [lat, lng, intensity] */
+  const heatmapPoints = useMemo<[number, number, number][]>(
+    () =>
+      complaints.map((c) => [
+        c.latitude,
+        c.longitude,
+        Math.min(SEVERITY_WEIGHTS[c.severity] / 5, 1), // normalize 0–1
+      ]),
+    [complaints],
+  );
 
   const showMarkers = layerMode === 'markers' || layerMode === 'both';
   const showHeatmap = layerMode === 'heatmap' || layerMode === 'both';
@@ -73,50 +72,49 @@ function ComplaintsMap({ complaints }: ComplaintsMapProps) {
       </div>
 
       {/* ── Map container ───────────────────────────────────────────────── */}
-      <div className="relative mt-5 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-        <div className="relative min-h-[32rem] p-4 sm:p-6">
+      <div className="relative mt-5 overflow-hidden rounded-xl border border-slate-200">
+        {/* Leaflet needs an explicit height on its container */}
+        <div style={{ height: '32rem', width: '100%' }}>
+          <MapContainer
+            center={MAP_CENTER}
+            zoom={MAP_ZOOM}
+            style={{ height: '100%', width: '100%' }}
+            scrollWheelZoom={true}
+            zoomControl={true}
+          >
+            {/* OpenStreetMap tiles — free, no API key needed */}
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              maxZoom={19}
+            />
 
-          <MapLoader apiKey={apiKey}>
-            <GoogleMap
-              mapContainerClassName="h-[32rem] w-full rounded-lg"
-              center={MAP_CENTER}
-              zoom={12}
-              options={DEFAULT_MAP_OPTIONS}
-            >
-              {showHeatmap && heatmapPoints.length > 0 && (
-                <MapHeatmapLayer points={heatmapPoints} />
-              )}
+            {showHeatmap && heatmapPoints.length > 0 && (
+              <MapHeatmapLayer points={heatmapPoints} />
+            )}
 
-              {showMarkers && (
-                <MapMarkerLayer
-                  complaints={complaints}
-                  selectedId={selectedComplaint?.id ?? null}
-                  onSelect={handleSelect}
-                />
-              )}
+            {showMarkers && (
+              <MapMarkerLayer
+                complaints={complaints}
+                selectedId={selectedComplaint?.id ?? null}
+                onSelect={handleSelect}
+              />
+            )}
+          </MapContainer>
+        </div>
 
-              {selectedComplaint && (
-                <MapInfoWindow complaint={selectedComplaint} onClose={handleClose} />
-              )}
-            </GoogleMap>
-          </MapLoader>
-
-          {/* Legend pill — bottom-right overlay */}
-          <div className="pointer-events-none absolute bottom-8 right-8 flex flex-col gap-2">
-            <LegendPill color="#DC2626" label="Critical" />
-            <LegendPill color="#F59E0B" label="High" />
-            <LegendPill color="#2563EB" label="Medium" />
-            <LegendPill color="#16A34A" label="Low" />
-          </div>
+        {/* Legend pill — absolute-positioned on top of the map */}
+        <div className="pointer-events-none absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
+          <LegendPill color="#f43f5e" label="Critical" />
+          <LegendPill color="#f97316" label="High" />
+          <LegendPill color="#f59e0b" label="Medium" />
+          <LegendPill color="#10b981" label="Low" />
         </div>
       </div>
 
       {/* ── Selected complaint detail panel ─────────────────────────────── */}
       {selectedComplaint ? (
-        <ComplaintDetailPanel
-          complaint={selectedComplaint}
-          onClose={handleClose}
-        />
+        <ComplaintDetailPanel complaint={selectedComplaint} onClose={handleClose} />
       ) : (
         <div className="mt-4 rounded-xl border border-dashed border-slate-200 px-5 py-4 text-center text-xs text-[#64748B] font-medium">
           Click a marker on the map to view complaint details
@@ -149,8 +147,7 @@ interface ComplaintDetailPanelProps {
 
 function ComplaintDetailPanel({ complaint, onClose }: ComplaintDetailPanelProps) {
   const severityPill = SEVERITY_PILL[complaint.severity];
-  const statusPill =
-    STATUS_PILL[complaint.status] ?? 'bg-white/10 text-white border-white/20';
+  const statusPill = STATUS_PILL[complaint.status] ?? 'bg-white/10 text-white border-white/20';
   const dotColor = SEVERITY_COLORS[complaint.severity];
 
   return (

@@ -132,7 +132,12 @@ function ReportIssuePage({ onOpenAnalysis, onBackToDashboard, onSwitchToAdmin }:
 
       // Trigger Gemini API and file loading in background
       const apiPromise = Promise.all([
-        analyzeImageIssue(file, combined || undefined),
+        analyzeImageIssue(
+          file,
+          combined || undefined,
+          location?.latitude,
+          location?.longitude,
+        ),
         fileToDataUrl(file),
       ]);
 

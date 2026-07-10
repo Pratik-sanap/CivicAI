@@ -1,6 +1,32 @@
 # CivicAI 🌆
 
-> **AI-powered civic issue reporting platform** — citizens report potholes, garbage, broken lights, and more. Gemini Vision analyzes each photo, auto-generates professional complaints, routes them to the right municipal department, and displays everything on a Google Maps heatmap.
+> **AI-powered civic issue reporting platform** — citizens photograph potholes, garbage, broken lights, and more. Gemini Vision AI analyzes each photo, auto-generates a professional complaint, routes it to the correct municipal department, and displays everything on an interactive Leaflet/OpenStreetMap heatmap.
+
+---
+
+## 📸 Screenshots
+
+| Landing Page | Citizen Dashboard |
+|---|---|
+| ![Landing Page](Screenshot%202026-07-09%20212222.png) | ![Citizen Dashboard](Screenshot%202026-07-09%20212252.png) |
+
+| Admin Console | Complaint Tracking |
+|---|---|
+| ![Admin Console](Screenshot%202026-07-09%20212315.png) | ![Complaint Tracking](Screenshot%202026-07-09%20212515.png) |
+
+---
+
+## 🗺️ How It Works
+
+<p align="center">
+  <img src="ChatGPT%20Image%20Jul%2010%2C%202026%2C%2002_38_47%20AM.png" alt="CivicAI Workflow" width="420"/>
+</p>
+
+### Citizen Journey
+
+<p align="center">
+  <img src="ChatGPT%20Image%20Jul%2010%2C%202026%2C%2003_40_08%20AM.png" alt="Citizen Journey" width="560"/>
+</p>
 
 ---
 
@@ -8,38 +34,45 @@
 
 | Area | Highlights |
 |---|---|
-| 📸 **Image Analysis** | Gemini Vision detects issue category, severity, confidence, and department |
-| 📝 **Complaint Generation** | AI writes a professional complaint text from the photo |
+| 📸 **Image Analysis** | Gemini Vision detects issue category, severity, confidence, and responsible department |
+| 📝 **Complaint Generation** | AI writes a professional complaint with priority, impact, and resolution time estimate |
 | 📍 **Geo-tagging** | Browser geolocation attaches GPS coordinates to every report |
-| 🗺️ **Interactive Maps** | Google Maps with markers, clustering, and heatmap layer |
-| 📊 **Admin Dashboard** | Municipal officers see metrics, charts, filters, and the full complaint queue |
+| 🗺️ **Interactive Maps** | Leaflet + OpenStreetMap with markers, clustering, heatmap layer, and InfoWindows |
+| 📊 **Admin Dashboard** | Municipal officers see metrics, charts, filters, severity distribution, and the full complaint queue |
+| 🔍 **Complaint Tracking** | Citizens look up any complaint by receipt ID to view real-time pipeline status |
 | 🔔 **Toast Notifications** | Real-time feedback on submit, error, and success events |
-| 🌙 **Dark-first UI** | Glassmorphism, smooth animations, premium SaaS aesthetics |
+| 🌙 **Light UI** | Clean card-based design with smooth Framer Motion animations |
+| 🐳 **Docker Compose** | Single-command deployment for both services |
 
 ---
 
 ## 🏗️ Tech Stack
 
 ### Frontend
-| Tech | Version |
-|---|---|
-| React | 19 |
-| Vite | 6 |
-| Tailwind CSS | 4 |
-| TypeScript | 5 |
-| react-hook-form | 7 |
-| lucide-react | latest |
-| @vis.gl/react-google-maps | latest |
-| axios | 1 |
+
+| Tech | Version | Notes |
+|---|---|---|
+| React | 18 | |
+| Vite | 6 | Build tool & dev server |
+| Tailwind CSS | 3 | Utility-first styling |
+| TypeScript | 5 | |
+| framer-motion | 12 | Animations & transitions |
+| react-hook-form | 7 | Form state management |
+| lucide-react | latest | Icon library |
+| Leaflet + react-leaflet | 1.9 / 4 | Interactive map & heatmap |
+| leaflet.heat | 0.2 | Heatmap overlay plugin |
+| axios | 1 | HTTP client |
 
 ### Backend
+
 | Tech | Notes |
 |---|---|
-| FastAPI | Python 3.11+ |
+| FastAPI | Python 3.11+ ASGI framework |
 | Pydantic v2 | Request/response validation |
-| Google Gemini API | `gemini-2.0-flash` model for image analysis |
-| Supabase | PostgreSQL + Auth + Storage |
-| python-multipart | File upload support |
+| Google Gemini API | `gemini-2.0-flash` model for image analysis (via `google-genai` SDK) |
+| Supabase | PostgreSQL database + Storage for image uploads |
+| python-multipart | Multipart file upload support |
+| httpx | Async HTTP client (used in legacy IssueAnalyzer) |
 | uvicorn | ASGI server |
 
 ---
@@ -51,30 +84,55 @@ CivicAI/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── admin/          # AdminMetrics, ComplaintTable, ChartPanel, …
-│   │   │   ├── common/         # Toast, Skeleton, Badge, EmptyState
-│   │   │   ├── dashboard/      # StatisticsCards, RecentComplaints, Timeline, …
-│   │   │   ├── forms/          # UploadDropzone, LocationCard, AnalysisPanel, …
+│   │   │   ├── admin/          # AdminMetrics, ComplaintTable, ComplaintFilters,
+│   │   │   │                   # ChartPanel, ComplaintsMap, SeverityDistribution, …
+│   │   │   ├── common/         # Toast, Skeleton, Badge, EmptyState, AnimatedCounter
+│   │   │   ├── dashboard/      # StatisticsCards, RecentComplaints, NearbyIssuesMap,
+│   │   │   │                   # ComplaintStatusTimeline, CitizenGreeting, QuickReportButton
+│   │   │   ├── forms/
+│   │   │   │   └── report-issue/  # UploadDropzone, LocationCard, NotesField, AnalysisPanel
 │   │   │   ├── layout/         # AppHeader
-│   │   │   └── maps/           # MapLoader, MapMarkerLayer, MapHeatmapLayer
+│   │   │   └── maps/           # MapLoader, MapMarkerLayer, MapHeatmapLayer,
+│   │   │                       # MapInfoWindow, MapLayerToggle
 │   │   ├── pages/
+│   │   │   ├── LandingPage.tsx
+│   │   │   ├── HeatmapPage.tsx
 │   │   │   ├── admin/          # AdminDashboardPage
-│   │   │   └── citizen/        # CitizenDashboardPage, ReportIssuePage, AIAnalysisPage
-│   │   ├── services/           # reportApi.ts, googleMaps/
+│   │   │   └── citizen/        # CitizenDashboardPage, ReportIssuePage,
+│   │   │                       # AIAnalysisPage, ComplaintTrackingPage
+│   │   ├── services/           # reportApi.ts, googleMaps/mapConfig.ts
 │   │   ├── types/              # analysis.ts, report.ts, dashboard.ts, adminDashboard.ts
-│   │   └── utils/              # image.ts
+│   │   └── utils/
 │   ├── tailwind.config.js
 │   └── vite.config.ts
 │
 └── backend/
     └── app/
         ├── api/v1/
-        │   ├── endpoints/       # analyze.py, complaints.py, dashboard.py, heatmap.py
-        │   └── dependencies.py
-        ├── models/              # complaint.py, enums.py
-        ├── repositories/        # report_repository.py
-        ├── schemas/             # report.py, analysis.py, dashboard.py
-        ├── services/            # report_service.py, issue_analyzer.py, image_analysis_service.py
+        │   ├── api.py              # Router aggregation
+        │   ├── dependencies.py     # FastAPI dependency injection
+        │   └── endpoints/          # analyze.py, analysis.py (legacy), complaints.py,
+        │                           # dashboard.py, heatmap.py, health.py, reports.py (legacy)
+        ├── core/
+        │   └── config.py           # Settings dataclass (env vars)
+        ├── db/
+        │   └── supabase.py         # Supabase client factory & helpers
+        ├── integrations/           # ai/, maps/, storage/ sub-packages
+        ├── models/                 # complaint.py, department.py, user.py,
+        │                           # activity_log.py, enums.py
+        ├── prompts/
+        │   └── analysis_prompt.py  # Gemini Vision prompt template
+        ├── repositories/
+        │   ├── report_repository.py     # In-memory thread-safe store
+        │   └── supabase_repository.py   # Supabase-backed persistence layer
+        ├── schemas/                # analysis.py, complaint.py, dashboard.py,
+        │                           # department.py, report.py, user.py, activity_log.py
+        ├── services/
+        │   ├── gemini_service.py        # Google Gemini Vision API client
+        │   ├── image_analysis_service.py  # Legacy image analysis wrapper
+        │   ├── issue_analyzer.py        # Legacy keyword + Gemini REST analyzer
+        │   ├── report_service.py        # Business logic for all complaint operations
+        │   └── storage_service.py       # Supabase Storage image upload service
         └── main.py
 ```
 
@@ -86,9 +144,62 @@ CivicAI/
 - Node.js 20+
 - Python 3.11+
 - A Google Gemini API key
-- A Supabase project
+- A Supabase project (for storage and persistence)
 
 ---
+
+## 🐳 Docker Deployment (Recommended)
+
+The fastest way to run CivicAI end-to-end is with **Docker Compose**. This spins up both the FastAPI backend and the Nginx-served React frontend in isolated containers. Maps use Leaflet + OpenStreetMap — **no Google Maps API key required**.
+
+### Prerequisites (Docker)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose)
+- A Google Gemini API key
+- A Supabase project with the schema migrated
+
+### Steps
+
+**1. Configure environment variables**
+
+```bash
+# Create the backend secrets file
+cp backend/.env.example backend/.env
+# → Fill in GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+```
+
+**2. Build and start**
+
+```bash
+docker compose up --build
+# First build: ~3–5 min (downloads base images, installs deps)
+# Subsequent starts: < 30 s (cached layers)
+```
+
+**3. Open the app**
+
+| Service | URL |
+|---|---|
+| 🌐 **Frontend** (React app) | http://localhost |
+| 🔌 **Backend API** (direct) | http://localhost:8000/api/v1/health |
+| 📖 **Swagger UI** | http://localhost:8000/docs |
+
+**Useful commands**
+
+```bash
+# View logs from a specific service
+docker compose logs -f backend
+docker compose logs -f frontend
+
+# Rebuild only the backend after a code change
+docker compose up --build backend
+
+# Stop and remove containers
+docker compose down
+```
+
+---
+
+## 💻 Local Development
 
 ### 1. Clone
 
@@ -110,8 +221,9 @@ Create `frontend/.env.local`:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000/api/v1
-VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
+
+> **Note:** The interactive map is powered by **Leaflet + OpenStreetMap** and requires no API key.
 
 Start the dev server:
 
@@ -139,8 +251,15 @@ Create `backend/.env`:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.0-flash
+
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your_service_role_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key   # starts with eyJ...
+SUPABASE_ANON_KEY=your_anon_key                   # optional fallback
+SUPABASE_BUCKET=civic-uploads
+
+# Comma-separated allowed frontend origins
+FRONTEND_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
 Run the backend:
@@ -167,16 +286,28 @@ Run the schema migration in the Supabase SQL editor:
 
 ## 🔌 API Endpoints
 
+### Primary Endpoints
+
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/v1/analyze` | Analyze image with Gemini Vision |
-| `POST` | `/api/v1/complaints` | Submit a new complaint |
-| `GET`  | `/api/v1/complaints` | List complaints (filterable + paginated) |
+| `POST` | `/api/v1/analyze` | Upload image (multipart) → Supabase Storage + Gemini Vision analysis |
+| `POST` | `/api/v1/complaints` | Submit a complaint (base64 image + optional citizen details) |
+| `GET`  | `/api/v1/complaints` | List complaints (filterable by status, category, severity, department + paginated) |
 | `GET`  | `/api/v1/complaints/{id}` | Get a single complaint |
-| `PATCH` | `/api/v1/complaints/{id}` | Update status / officer notes |
-| `GET`  | `/api/v1/dashboard` | Admin aggregate stats |
-| `GET`  | `/api/v1/heatmap` | Geo-located points for map |
+| `PATCH` | `/api/v1/complaints/{id}` | Update status / officer notes / department |
+| `GET`  | `/api/v1/dashboard` | Admin aggregate stats (totals, breakdowns, 7-day trend) |
+| `GET`  | `/api/v1/heatmap` | Geo-located points for map rendering |
 | `GET`  | `/api/v1/health` | Health check |
+
+### Legacy Endpoints (backward-compatible)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/analysis/image` | Legacy image analysis via multipart upload |
+| `POST` | `/api/v1/reports` | Legacy report creation (base64) |
+| `GET`  | `/api/v1/reports` | Legacy list reports |
+| `GET`  | `/api/v1/reports/{id}` | Legacy get report |
+| `PATCH` | `/api/v1/reports/{id}/status` | Legacy status update |
 
 Full interactive docs: **`http://localhost:8000/docs`**
 
@@ -184,27 +315,28 @@ Full interactive docs: **`http://localhost:8000/docs`**
 
 ## 📸 Supported Issue Categories
 
-| Category | Department |
-|---|---|
-| Pothole | Road Works |
-| Garbage | Sanitation |
-| Streetlight | Electricity |
-| Water Leakage | Water Supply |
-| Illegal Parking | Enforcement |
-| Broken Road | Road Works |
-| Traffic Signal | Traffic |
-| Open Drain | Public Works |
-| Construction Waste | Public Works |
-| Fallen Tree | Parks & Trees |
+| Category | Department | Severity Default |
+|---|---|---|
+| Pothole | Road Works | High |
+| Garbage | Sanitation | Medium |
+| Streetlight | Electricity | Medium |
+| Water Leakage | Water Supply | High |
+| Illegal Parking | Enforcement | Medium |
+| Broken Road | Public Works | High |
+| Traffic Signal | Traffic | Critical |
+| Open Drain | Public Works | High |
+| Construction Waste | Sanitation | Medium |
+| Fallen Tree | Parks & Trees | High |
 
 ---
 
 ## 🎨 UI Design System
 
-- **Font**: Inter (Geometric sans-serif optimized for screen legibility)
-- **Color palette**: Background `Slate-50 (#F5F7FA)` · Cards `White (#FFFFFF)` · Primary Blue `#2563EB` · Success Green `#16A34A` · Warning Amber `#F59E0B` · Danger Red `#DC2626`
-- **Premium Components**: Reusable `AnimatedCounter` statistics, step-by-step progressive AI checkloader, ChatGPT-style chatbot responses with SVG confidence rings, and official receipt verification templates
-- **Animations**: Framer-motion rise-in grid tiles, progressive checklist checking, character-by-character typing logs, and custom-defined skeleton shimmer bars
+- **Font**: System sans-serif stack via Tailwind defaults
+- **Color palette**: Background `Slate-50 / Gray-50` · Cards `White` · Primary Blue `#2563EB` · Success Emerald `#10B981` · Warning Amber `#F59E0B` · Danger Rose `#F43F5E`
+- **Map**: Leaflet with OpenStreetMap tiles — zero API key cost
+- **Premium Components**: `AnimatedCounter` stats, `ComplaintStatusTimeline`, `NearbyIssuesMap`, progress heatmap, category badge system
+- **Animations**: Framer Motion `motion.div` grid tiles, staggered entrance effects, hover states on cards
 
 ---
 
@@ -224,4 +356,4 @@ MIT — feel free to use this as a starting point for your own civic tech projec
 
 ---
 
-> Built with ❤️ for the CivicAI Hackathon · Powered by Google Gemini · Mapped with Google Maps
+> Built with ❤️ for the CivicAI Hackathon · Powered by Google Gemini · Mapped with Leaflet + OpenStreetMap
